@@ -1,3 +1,4 @@
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -10,7 +11,12 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     hmr: {
       protocol: 'ws'
-    }
+    },
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'c05f1714-8a33-4b30-9af9-17b27c227cd9.lovableproject.com'
+    ],
   },
   plugins: [
     react(),
