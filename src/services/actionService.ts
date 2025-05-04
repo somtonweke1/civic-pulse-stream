@@ -1,18 +1,13 @@
-
 import { supabase } from '@/lib/supabase';
 import { CivicAction, Verification, ActionImpact } from '@/lib/types';
 
 export const actionService = {
   // Create a new civic action
   createAction: async (action: Omit<CivicAction, 'id' | 'created_at' | 'verification_status'>) => {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) {
-      throw new Error('User must be logged in to create an action');
-    }
-
+    // Note: user_id should already be included in the action parameter now
+    
     const newAction = {
       ...action,
-      user_id: userId,
       verification_status: 'pending',
     };
 
@@ -74,19 +69,11 @@ export const actionService = {
 
   // Add verification to an action
   addVerification: async (verification: Omit<Verification, 'id' | 'created_at'>) => {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) {
-      throw new Error('User must be logged in to verify an action');
-    }
-
-    const newVerification = {
-      ...verification,
-      user_id: userId,
-    };
+    // Note: user_id should already be included in the verification parameter now
 
     const { data, error } = await supabase
       .from('verifications')
-      .insert(newVerification)
+      .insert(verification)
       .select();
 
     if (error) {

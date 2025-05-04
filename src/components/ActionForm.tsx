@@ -88,6 +88,7 @@ const ActionForm = () => {
         details,
         location,
         action_type: actionType,
+        user_id: user.id // Add the user_id here
       });
 
       // If there's a verification file, upload it
@@ -102,7 +103,8 @@ const ActionForm = () => {
           action_id: newAction.id,
           method: 'photo',
           status: 'pending',
-          evidence_url: verificationUrl
+          evidence_url: verificationUrl,
+          user_id: user.id // Add the user_id here
         });
       }
 
