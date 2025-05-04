@@ -9,6 +9,9 @@ module.exports = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
@@ -37,9 +40,27 @@ module.exports = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
-        border: "hsl(var(--border))",
+        civic: "hsl(180, 84%, 24%)",
+        "civic-orange": "hsl(25, 95%, 53%)",
+        "civic-purple": "hsl(265, 84%, 65%)",
+        "civic-blue": "hsl(217, 91%, 60%)",
+        "civic-green": "hsl(158, 84%, 40%)"
+      },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
+      },
+      keyframes: {
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+      },
+      animation: {
+        float: "float 6s ease-in-out infinite",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 }
