@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -7,10 +8,13 @@ export default {
   theme: {
     extend: {
       colors: {
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         civic: "hsl(180, 84%, 24%)",
         "civic-orange": "hsl(25, 95%, 53%)",
         "civic-purple": "hsl(265, 84%, 65%)",
         "civic-blue": "hsl(217, 91%, 60%)",
+        "civic-green": "hsl(158, 84%, 40%)",
       },
       animation: {
         float: "float 6s ease-in-out infinite",
