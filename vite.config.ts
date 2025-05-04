@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    hmr: {
+      protocol: 'ws'
+    }
   },
   plugins: [
     react(),
@@ -17,6 +20,21 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-    },
+      crypto: 'crypto-browserify',
+      stream: 'stream-browserify',
+      buffer: 'buffer/'
+    }
   },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  },
+  define: {
+    'process.env': {},
+    global: 'globalThis',
+    'window.crypto': 'crypto'
+  }
 }));
