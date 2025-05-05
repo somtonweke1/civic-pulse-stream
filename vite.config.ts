@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => ({
   },
   define: {
     'process.env': {},
-    global: 'globalThis',
-    'window.crypto': 'crypto'
+    global: 'globalThis'
+    // Removed 'window.crypto': 'crypto' as it was causing the error
   }
 }));
