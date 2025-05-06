@@ -25,11 +25,15 @@ const SignIn = () => {
     setError('');
     
     try {
+      console.log('Attempting sign in with:', { email });
       await signIn(email, password);
+      toast.success('Signed in successfully!');
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Sign in error:', error);
-      setError(error.message || 'Failed to sign in. Please check your credentials.');
+      const errorMessage = error.message || 'Failed to sign in. Please check your credentials.';
+      setError(errorMessage);
+      toast.error(`Sign in failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
