@@ -14,6 +14,7 @@ import Footer from '@/components/Footer';
 const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -24,6 +25,13 @@ const SignUp = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    
+    // Check if passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
     
     try {
       console.log('Attempting sign up with:', { email, name });
@@ -102,6 +110,20 @@ const SignUp = () => {
                   <p className="text-xs text-muted-foreground">
                     Password must be at least 8 characters long.
                   </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" htmlFor="confirmPassword">
+                    Confirm Password
+                  </label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                  />
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
