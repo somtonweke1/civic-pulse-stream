@@ -23,37 +23,50 @@ export const authService = {
 
   // Sign up with email and password
   signUp: async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
+    try {
+      console.log('Attempting to sign up user:', { email, name });
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          }
         }
+      });
+
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw new Error(error.message);
       }
-    });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+      console.log('Sign up successful, creating profile...');
+      
+      // Create user profile
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            name,
+            email,
+            trust_score: 0,
+          });
 
-    // Create user profile
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          name,
-          email,
-          trust_score: 0,
-        });
-
-      if (profileError) {
-        throw new Error(profileError.message);
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          throw new Error(profileError.message);
+        }
+        
+        console.log('User profile created successfully');
       }
-    }
 
-    return data;
+      return data;
+    } catch (error: any) {
+      console.error('Sign up error caught:', error);
+      throw error;
+    }
   },
 
   // Sign in with email and password

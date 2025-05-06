@@ -5,7 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -14,19 +16,26 @@ const SignUp = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     try {
+      console.log('Attempting sign up with:', { email, name });
       await signUp(email, password, name);
+      toast.success('Account created successfully! Please check your email to confirm your signup.');
       // We'll navigate to a confirmation page instead of auto-login
       navigate('/sign-up-confirmation');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign up error:', error);
+      const errorMessage = error.message || 'Failed to create account. Please try again.';
+      setError(errorMessage);
+      toast.error(`Sign up failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -46,6 +55,12 @@ const SignUp = () => {
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium" htmlFor="name">
                     Name
