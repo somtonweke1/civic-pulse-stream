@@ -5,20 +5,32 @@ import { User } from '@/lib/types';
 export const authService = {
   // Get current session
   getCurrentSession: async () => {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error('Error getting session:', error);
+        throw new Error(error.message);
+      }
+      return data;
+    } catch (error: any) {
+      console.error('Session error caught:', error);
+      throw error;
     }
-    return data;
   },
 
   // Get current user
   getCurrentUser: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error getting user:', error);
+        throw new Error(error.message);
+      }
+      return data.user;
+    } catch (error: any) {
+      console.error('Current user error caught:', error);
+      throw error;
     }
-    return data.user;
   },
 
   // Sign up with email and password
@@ -72,6 +84,8 @@ export const authService = {
   // Sign in with email and password
   signIn: async (email: string, password: string) => {
     try {
+      console.log('Attempting to sign in user:', { email });
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -82,6 +96,7 @@ export const authService = {
         throw new Error(error.message);
       }
       
+      console.log('Sign in successful:', data);
       return data;
     } catch (error: any) {
       console.error('Sign in error caught:', error);
@@ -91,38 +106,55 @@ export const authService = {
 
   // Sign out
   signOut: async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw new Error(error.message);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        throw new Error(error.message);
+      }
+    } catch (error: any) {
+      console.error('Sign out error caught:', error);
+      throw error;
     }
   },
 
   // Get user profile
   getUserProfile: async (userId: string): Promise<User | null> => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      return data as User;
+    } catch (error: any) {
+      console.error('Get profile error caught:', error);
       return null;
     }
-    return data as User;
   },
 
   // Update user profile
   updateUserProfile: async (userId: string, updates: Partial<User>) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select();
 
-    if (error) {
-      throw new Error(error.message);
+      if (error) {
+        console.error('Update profile error:', error);
+        throw new Error(error.message);
+      }
+      return data;
+    } catch (error: any) {
+      console.error('Update profile error caught:', error);
+      throw error;
     }
-    return data;
   }
 };
