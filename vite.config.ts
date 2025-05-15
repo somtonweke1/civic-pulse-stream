@@ -1,4 +1,3 @@
-
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -26,21 +25,33 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      crypto: 'crypto-browserify',
+      crypto: path.resolve(__dirname, './src/polyfills/crypto.js'),
       stream: 'stream-browserify',
-      buffer: 'buffer/'
+      buffer: 'buffer/',
+      worker_threads: path.resolve(__dirname, './src/polyfills/worker-threads.js')
     }
   },
   optimizeDeps: {
+    exclude: ['worker_threads'],
     esbuildOptions: {
       define: {
         global: 'globalThis'
       }
     }
   },
+  build: {
+    rollupOptions: {
+      external: ['worker_threads'],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          crypto: ['crypto-browserify', 'stream-browserify', 'buffer']
+        }
+      }
+    }
+  },
   define: {
     'process.env': {},
     global: 'globalThis'
-    // Removed 'window.crypto': 'crypto' as it was causing the error
   }
 }));

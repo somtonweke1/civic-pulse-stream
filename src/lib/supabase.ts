@@ -5,15 +5,15 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables:', {
-    url: supabaseUrl ? '✓' : '✗',
-    key: supabaseKey ? '✓' : '✗'
-  });
-  throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
+  throw new Error('Missing Supabase environment variables');
 }
 
-console.log('Initializing Supabase with URL:', supabaseUrl);
+console.log('Initializing Supabase with:', {
+  url: supabaseUrl,
+  key: supabaseKey ? '✓' : '✗'
+});
 
+// Create Supabase client with custom storage and error handling
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
@@ -48,5 +48,40 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   },
   db: {
     schema: 'public'
+  },
+  global: {
+    headers: {
+      'x-application-name': 'substance'
+    }
   }
+});
+
+// Create admin client for privileged operations
+export const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: false
+  },
+  db: {
+    schema: 'public'
+  }
+});
+
+// Test the connection
+const testConnection = async () => {
+  try {
+    console.log('Testing Supabase connection...');
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    console.log('Supabase connection successful');
+    return true;
+  } catch (error) {
+    console.error('Supabase connection failed:', error);
+    throw error;
+  }
+};
+
+// Run connection test
+testConnection().catch(error => {
+  console.error('Failed to initialize Supabase:', error);
 });

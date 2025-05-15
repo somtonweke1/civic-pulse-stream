@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -21,23 +20,47 @@ const SignUp = () => {
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
+  const validateForm = () => {
+    if (!email) {
+      setError('Email is required');
+      return false;
+    }
+    if (!name) {
+      setError('Name is required');
+      return false;
+    }
+    if (!password) {
+      setError('Password is required');
+      return false;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-    
     try {
+      console.log('Validating signup form...');
+      if (!validateForm()) {
+        console.log('Form validation failed');
+        setLoading(false);
+        return;
+      }
+      
       console.log('Attempting sign up with:', { email, name });
-      await signUp(email, password, name);
+      await signUp({ email, password, name });
+      console.log('Sign up successful');
       toast.success('Account created successfully! Please check your email to confirm your signup.');
-      // We'll navigate to a confirmation page instead of auto-login
       navigate('/sign-up-confirmation');
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -79,6 +102,7 @@ const SignUp = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -92,6 +116,7 @@ const SignUp = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -106,6 +131,7 @@ const SignUp = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
+                    disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground">
                     Password must be at least 8 characters long.
@@ -123,6 +149,7 @@ const SignUp = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={8}
+                    disabled={loading}
                   />
                 </div>
               </CardContent>

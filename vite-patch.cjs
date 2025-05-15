@@ -8,6 +8,17 @@ const randomBytesFunction = (size) => {
 
 // Override the require function to patch modules that use crypto
 require('module').prototype.require = function(id) {
+  // Handle worker_threads specially
+  if (id === 'worker_threads') {
+    return {
+      Worker: class Worker {
+        constructor() {
+          throw new Error('Worker threads are not supported in the browser');
+        }
+      }
+    };
+  }
+
   const result = originalRequire.apply(this, arguments);
   
   // If this is the crypto module or a module that might use crypto

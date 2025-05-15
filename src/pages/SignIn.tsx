@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -25,15 +24,34 @@ const SignIn = () => {
     setError('');
     
     try {
-      console.log('Attempting sign in with:', { email });
-      await signIn(email, password);
+      console.log('Starting sign in process...');
+      
+      if (!email || !password) {
+        console.error('Missing required fields');
+        setError('Email and password are required');
+        return;
+      }
+
+      console.log('Attempting to sign in with:', { email });
+      const result = await signIn({ email, password });
+      
+      if (!result) {
+        console.error('No result returned from sign in');
+        throw new Error('Sign in failed');
+      }
+
+      console.log('Sign in successful, navigating to dashboard...');
       toast.success('Signed in successfully!');
-      navigate('/dashboard');
+      
+      // Add a small delay before navigation to ensure state is updated
+      setTimeout(() => {
+        navigate('/dashboard', { replace: true });
+      }, 100);
     } catch (error: any) {
       console.error('Sign in error:', error);
-      const errorMessage = error.message || 'Failed to sign in. Please check your credentials.';
+      const errorMessage = error.message || 'Failed to sign in';
       setError(errorMessage);
-      toast.error(`Sign in failed: ${errorMessage}`);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -70,6 +88,7 @@ const SignIn = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -88,6 +107,7 @@ const SignIn = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={loading}
                   />
                 </div>
               </CardContent>
