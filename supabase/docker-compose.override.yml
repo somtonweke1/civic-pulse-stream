@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  storage:
+    image: supabase/storage-api:latest
+    environment:
+      - PGRST_JWT_SECRET=hMtRPC+lcBHWwX+8JQk8tLb/++kP+Svr0+lyiU8+RrvsIY2HayzTaEweM6SRT0kMsz6VR0PkjhBBCbJ0mYXz5Q==
+      - POSTGREST_URL=http://kong:8000
+      - PGRST_DB_SCHEMA=storage
+      - PGRST_DB_ANON_ROLE=anon
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres?sslmode=disable
+      - STORAGE_BACKEND=file
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+      - STORAGE_API_HOST=0.0.0.0
+      - STORAGE_API_PORT=5000
+      - STORAGE_API_CORS_ORIGINS=*
+      - STORAGE_API_JWT_SECRET=hMtRPC+lcBHWwX+8JQk8tLb/++kP+Svr0+lyiU8+RrvsIY2HayzTaEweM6SRT0kMsz6VR0PkjhBBCbJ0mYXz5Q==
+      - ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdXdleHpjaWRkZnZmdHpoZHhxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzOTMwNzEsImV4cCI6MjA2MTk2OTA3MX0.a0LS4cZsOtvjCEI4gU5xMSFE_8q29SUtHxWc6cGleuU
+      - SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jdXdleHpjaWRkZnZmdHpoZHhxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NjM5MzA3MSwiZXhwIjoyMDYxOTY5MDcxfQ.0ye9BCXAPtlvsZ6IE5esZaAIqD6Qm1Vu183dA-BhokM
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - supabase_storage_Substance:/var/lib/storage
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kong:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - supabase_network_Substance
+    command: ["/bin/sh", "-c", "sleep 20 && /usr/local/bin/storage-api"]
+    init: true
+
+networks:
+  supabase_network_Substance:
+    name: supabase_network_Substance
+    external: true
+
+volumes:
+  supabase_storage_Substance:
+    name: supabase_storage_Substance 
