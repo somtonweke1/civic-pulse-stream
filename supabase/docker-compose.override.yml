@@ -19,6 +19,9 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_DB=postgres
+      - STORAGE_API_MAX_FILE_SIZE=52428800
+      - STORAGE_API_FILE_STORAGE_BACKEND=file
+      - STORAGE_API_FILE_STORAGE_PATH=/var/lib/storage
     volumes:
       - supabase_storage_Substance:/var/lib/storage
     healthcheck:
