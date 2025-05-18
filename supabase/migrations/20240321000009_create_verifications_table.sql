@@ -28,10 +28,4 @@ CREATE POLICY "Users can view their own verifications"
 CREATE POLICY "Users can update their own verifications"
     ON public.verifications
     FOR UPDATE
-    USING (auth.uid() = user_id);
-
--- Create trigger to update updated_at timestamp
-CREATE TRIGGER set_updated_at
-    BEFORE UPDATE ON public.verifications
-    FOR EACH ROW
-    EXECUTE FUNCTION public.set_updated_at(); 
+    USING (auth.uid() = user_id); 
