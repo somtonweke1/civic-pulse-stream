@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { User } from '@/lib/types';
 
@@ -35,22 +34,6 @@ export const authService = {
 
     if (error) {
       throw new Error(error.message);
-    }
-
-    // Create user profile
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          name,
-          email,
-          trust_score: 0,
-        });
-
-      if (profileError) {
-        throw new Error(profileError.message);
-      }
     }
 
     return data;

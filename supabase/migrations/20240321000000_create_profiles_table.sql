@@ -25,14 +25,29 @@ CREATE POLICY "Users can update their own profile"
 -- Create function to handle new user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    profile_exists BOOLEAN;
 BEGIN
-    INSERT INTO public.profiles (id, name, email)
-    VALUES (
-        NEW.id,
-        NEW.raw_user_meta_data->>'name',
-        NEW.email
-    );
+    -- Check if profile already exists
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles WHERE id = NEW.id
+    ) INTO profile_exists;
+
+    -- Only create profile if it doesn't exist
+    IF NOT profile_exists THEN
+        INSERT INTO public.profiles (id, name, email)
+        VALUES (
+            NEW.id,
+            COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+            NEW.email
+        );
+    END IF;
+
     RETURN NEW;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE LOG 'Error in handle_new_user: %', SQLERRM;
+        RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
