@@ -1,6 +1,3 @@
--- Enable storage extension if not already enabled
-CREATE EXTENSION IF NOT EXISTS "storage" SCHEMA "storage";
-
 -- Create storage bucket for verifications
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('verifications', 'verifications', true)
