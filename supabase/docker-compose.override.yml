@@ -22,6 +22,8 @@ services:
       - STORAGE_API_MAX_FILE_SIZE=52428800
       - STORAGE_API_FILE_STORAGE_BACKEND=file
       - STORAGE_API_FILE_STORAGE_PATH=/var/lib/storage
+      - LOG_LEVEL=debug
+      - STORAGE_API_DEBUG=true
     volumes:
       - supabase_storage_Substance:/var/lib/storage
     healthcheck:
