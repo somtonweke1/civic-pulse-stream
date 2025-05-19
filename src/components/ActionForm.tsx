@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,35 +81,57 @@ const ActionForm = () => {
     setLoading(true);
     
     try {
+      console.log('Creating new action with data:', {
+        title,
+        details,
+        location,
+        action_type: actionType,
+        user_id: user.id
+      });
+
       // Create the civic action
       const newAction = await actionService.createAction({
         title,
         details,
         location,
         action_type: actionType,
-        user_id: user.id // Add the user_id here
+        user_id: user.id
       });
+
+      console.log('Action created successfully:', newAction);
 
       // If there's a verification file, upload it
       if (uploadedFile && newAction.id) {
-        const verificationUrl = await actionService.uploadVerificationImage(
-          uploadedFile, 
-          newAction.id
-        );
+        console.log('Starting image upload for file:', uploadedFile.name);
+        try {
+          const verificationUrl = await actionService.uploadVerificationImage(
+            uploadedFile, 
+            newAction.id
+          );
+          console.log('Image uploaded successfully, URL:', verificationUrl);
 
-        // Add verification record
-        await actionService.addVerification({
-          action_id: newAction.id,
-          method: 'photo',
-          status: 'pending',
-          evidence_url: verificationUrl,
-          user_id: user.id // Add the user_id here
-        });
+          // Add verification record
+          console.log('Adding verification record with URL:', verificationUrl);
+          await actionService.addVerification({
+            action_id: newAction.id,
+            method: 'photo',
+            status: 'pending',
+            evidence_url: verificationUrl,
+            user_id: user.id
+          });
+          console.log('Verification record added successfully');
+        } catch (uploadError) {
+          console.error('Error during image upload or verification:', uploadError);
+          // Continue with the action creation even if verification fails
+          toast.warning('Action created but image verification failed. You can add verification later.');
+        }
       }
 
       // Calculate impact
       if (newAction.id) {
+        console.log('Calculating impact for action:', newAction.id);
         await actionService.calculateImpact(newAction.id, actionType);
+        console.log('Impact calculated successfully');
       }
 
       toast.success('Action logged successfully', {
@@ -130,7 +151,12 @@ const ActionForm = () => {
       navigate('/dashboard');
     } catch (error) {
       console.error('Error submitting action:', error);
-      toast.error('Failed to submit action. Please try again.');
+      // Show more specific error message based on the error
+      if (error instanceof Error) {
+        toast.error(`Failed to submit action: ${error.message}`);
+      } else {
+        toast.error('Failed to submit action. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
