@@ -1,51 +1,44 @@
--- Create storage bucket for verifications
+-- Create a new storage bucket for verifications
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('verifications', 'verifications', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Drop existing policies if they exist
-DROP POLICY IF EXISTS "Public Access" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
-DROP POLICY IF EXISTS "Users can update their own files" ON storage.objects;
-DROP POLICY IF EXISTS "Users can delete their own files" ON storage.objects;
-
--- Create new policies
+-- Create policies for the verifications bucket
 CREATE POLICY "Public Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'verifications');
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'verifications');
 
 CREATE POLICY "Authenticated users can upload"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'verifications' AND
-  auth.role() = 'authenticated'
-);
+    ON storage.objects FOR INSERT
+    WITH CHECK (
+        bucket_id = 'verifications' AND
+        auth.role() = 'authenticated'
+    );
 
 CREATE POLICY "Users can update their own files"
-ON storage.objects FOR UPDATE
-USING (
-  bucket_id = 'verifications' AND
-  auth.uid()::text = (storage.foldername(name))[1]
-);
+    ON storage.objects FOR UPDATE
+    USING (
+        bucket_id = 'verifications' AND
+        auth.uid() = owner
+    );
 
 CREATE POLICY "Users can delete their own files"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'verifications' AND
-  auth.uid()::text = (storage.foldername(name))[1]
-);
+    ON storage.objects FOR DELETE
+    USING (
+        bucket_id = 'verifications' AND
+        auth.uid() = owner
+    );
 
 -- Grant necessary permissions
-GRANT ALL ON storage.objects TO authenticated;
-GRANT ALL ON storage.objects TO anon;
-GRANT ALL ON storage.buckets TO authenticated;
-GRANT ALL ON storage.buckets TO anon;
-
--- Enable RLS on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+GRANT USAGE ON SCHEMA storage TO authenticated, anon;
+GRANT SELECT ON storage.objects TO authenticated, anon;
+GRANT INSERT ON storage.objects TO authenticated;
+GRANT UPDATE ON storage.objects TO authenticated;
+GRANT DELETE ON storage.objects TO authenticated;
+GRANT SELECT ON storage.buckets TO authenticated, anon;
 
 -- Create function to handle file uploads
-CREATE OR REPLACE FUNCTION storage.handle_file_upload()
+CREATE OR REPLACE FUNCTION public.handle_file_upload()
 RETURNS TRIGGER AS $$
 BEGIN
   -- Ensure the user has permission to upload
@@ -56,6 +49,9 @@ BEGIN
   -- Set the owner of the file to the uploading user
   NEW.owner = auth.uid();
   
+  -- Set the bucket_id to verifications
+  NEW.bucket_id = 'verifications';
+  
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -65,4 +61,4 @@ DROP TRIGGER IF EXISTS on_file_upload ON storage.objects;
 CREATE TRIGGER on_file_upload
   BEFORE INSERT ON storage.objects
   FOR EACH ROW
-  EXECUTE FUNCTION storage.handle_file_upload(); 
+  EXECUTE FUNCTION public.handle_file_upload(); 

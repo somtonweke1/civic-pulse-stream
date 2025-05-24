@@ -84,29 +84,50 @@ export const actionService = {
 
   // Upload verification evidence (image)
   uploadVerificationImage: async (file: File, actionId: string) => {
-    const userId = (await supabase.auth.getUser()).data.user?.id;
-    if (!userId) {
-      throw new Error('User must be logged in to upload verification');
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User must be logged in to upload verification');
+      }
+
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Invalid file type. Please upload a JPEG, PNG, or GIF image.');
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        throw new Error('File size too large. Maximum size is 5MB.');
+      }
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const timestamp = new Date().getTime();
+      const filePath = `${user.id}/${actionId}/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from('verifications')
+        .upload(filePath, file, {
+          upsert: false,
+          cacheControl: '3600',
+          contentType: file.type
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('verifications')
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error in uploadVerificationImage:', error);
+      throw error;
     }
-
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/${actionId}/${Math.random().toString(36).substring(2)}.${fileExt}`;
-
-    const { data, error } = await supabase.storage
-      .from('verifications')
-      .upload(filePath, file, {
-        upsert: true,
-      });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('verifications')
-      .getPublicUrl(data.path);
-
-    return urlData.publicUrl;
   },
 
   // Get action categories

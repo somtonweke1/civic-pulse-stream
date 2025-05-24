@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/lib/types';
@@ -76,7 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast.success('Signed in successfully');
     } catch (error: any) {
-      toast.error('Sign in failed: ' + error.message);
+      let errorMessage = 'Failed to sign in';
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Please confirm your email address before signing in';
+      }
+      toast.error(errorMessage);
       throw error;
     }
   };
@@ -84,9 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, name: string) => {
     try {
       await authService.signUp(email, password, name);
-      toast.success('Account created successfully! Please check your email to confirm your signup.');
+      toast.success('Welcome to Substance! Let\'s start making an impact.');
     } catch (error: any) {
-      toast.error('Sign up failed: ' + error.message);
+      let errorMessage = 'Failed to create account';
+      if (error.message.includes('User already registered')) {
+        errorMessage = 'An account with this email already exists';
+      } else if (error.message.includes('Password')) {
+        errorMessage = 'Password must be at least 8 characters long';
+      }
+      toast.error(errorMessage);
       throw error;
     }
   };

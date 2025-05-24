@@ -21,5 +21,15 @@ export default defineConfig({
         global: 'globalThis'
       }
     }
-  }
+  },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
 });
