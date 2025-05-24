@@ -1,302 +1,207 @@
 import { supabase } from '@/lib/supabase';
-import { CivicAction, Verification, ActionImpact, Category } from '@/lib/types';
+import { CivicAction, Verification, ActionImpact } from '@/lib/types';
 
-class ActionService {
+export const actionService = {
   // Create a new civic action
-  async createAction(action: Omit<CivicAction, 'id' | 'created_at' | 'verification_status'>): Promise<CivicAction> {
-    try {
-      console.log('Creating action:', action);
+  createAction: async (action: Omit<CivicAction, 'id' | 'created_at' | 'verification_status'>) => {
+    // Note: user_id should already be included in the action parameter now
+    
+    const newAction = {
+      ...action,
+      verification_status: 'pending',
+    };
 
-      // Ensure category_id is a number or null
-      const actionData = {
-        ...action,
-        category_id: action.category_id ? Number(action.category_id) : null,
-        verification_status: 'pending'
-      };
+    const { data, error } = await supabase
+      .from('civic_actions')
+      .insert(newAction)
+      .select();
 
-      const { data, error } = await supabase
-        .from('civic_actions')
-        .insert([actionData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating action:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        throw new Error('No data returned after creating action');
-      }
-
-      console.log('Action created successfully:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Error in createAction:', error);
-      throw new Error(error.message || 'Failed to create action');
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return data[0] as CivicAction;
+  },
 
   // Get all civic actions with pagination
-  async getActions(): Promise<CivicAction[]> {
-    try {
-      console.log('Fetching actions...');
+  getActions: async (page = 1, limit = 10) => {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-      const { data, error } = await supabase
-        .from('civic_actions')
-        .select('*, profiles:user_id (name, avatar_url)')
-        .order('created_at', { ascending: false });
+    const { data, error, count } = await supabase
+      .from('civic_actions')
+      .select('*, profiles(name, avatar_url)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-      if (error) {
-        console.error('Error fetching actions:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        console.log('No actions found');
-        return [];
-      }
-
-      console.log('Actions fetched successfully:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Error in getActions:', error);
-      throw new Error(error.message || 'Failed to fetch actions');
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return { data, count };
+  },
 
   // Get user's civic actions
-  async getUserActions(userId: string): Promise<CivicAction[]> {
-    try {
-      console.log('Fetching user actions:', userId);
-      
-      const { data, error } = await supabase
-        .from('civic_actions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+  getUserActions: async (userId: string) => {
+    const { data, error } = await supabase
+      .from('civic_actions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching user actions:', error);
-        throw new Error(error.message);
-      }
-
-      console.log('User actions fetched successfully:', data.length);
-      return data as CivicAction[];
-    } catch (error) {
-      console.error('Failed to fetch user actions:', error);
-      throw error;
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return data as CivicAction[];
+  },
 
   // Get civic action details
-  async getActionById(id: string): Promise<CivicAction | null> {
-    try {
-      console.log('Fetching action by ID:', id);
+  getActionById: async (actionId: string) => {
+    const { data, error } = await supabase
+      .from('civic_actions')
+      .select('*, profiles(name, avatar_url, trust_score)')
+      .eq('id', actionId)
+      .single();
 
-      const { data, error } = await supabase
-        .from('civic_actions')
-        .select('*, profiles:user_id (name, avatar_url)')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching action:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        console.log('Action not found');
-        return null;
-      }
-
-      console.log('Action fetched successfully:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Error in getActionById:', error);
-      throw new Error(error.message || 'Failed to fetch action');
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return data as CivicAction & { profiles: any };
+  },
 
   // Add verification to an action
-  async addVerification(verification: Omit<Verification, 'id' | 'created_at'>): Promise<Verification> {
-    try {
-      console.log('Adding verification:', verification);
-      
-      const { data, error } = await supabase
-        .from('verifications')
-        .insert(verification)
-        .select()
-        .single();
+  addVerification: async (verification: Omit<Verification, 'id' | 'created_at'>) => {
+    // Note: user_id should already be included in the verification parameter now
 
-      if (error) {
-        console.error('Error adding verification:', error);
-        throw new Error(error.message);
-      }
+    const { data, error } = await supabase
+      .from('verifications')
+      .insert(verification)
+      .select();
 
-      console.log('Verification added successfully');
-      return data as Verification;
-    } catch (error) {
-      console.error('Failed to add verification:', error);
-      throw error;
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return data[0] as Verification;
+  },
 
   // Upload verification evidence (image)
-  async uploadVerificationImage(file: File, actionId: string): Promise<string> {
+  uploadVerificationImage: async (file: File, actionId: string) => {
     try {
-      console.log('Uploading verification image for action:', actionId);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User must be logged in to upload verification');
+      }
 
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${actionId}-${Date.now()}.${fileExt}`;
-      const filePath = `verifications/${fileName}`;
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Invalid file type. Please upload a JPEG, PNG, or GIF image.');
+      }
 
-      const { error: uploadError } = await supabase.storage
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        throw new Error('File size too large. Maximum size is 5MB.');
+      }
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase();
+      const timestamp = new Date().getTime();
+      const filePath = `${user.id}/${actionId}/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
         .from('verifications')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          upsert: false,
+          cacheControl: '3600',
+          contentType: file.type
+        });
 
       if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        throw new Error(uploadError.message);
+        console.error('Upload error:', uploadError);
+        throw new Error(`Failed to upload image: ${uploadError.message}`);
       }
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('verifications')
-        .getPublicUrl(filePath);
+        .getPublicUrl(data.path);
 
-      console.log('Image uploaded successfully:', publicUrl);
-      return publicUrl;
-    } catch (error: any) {
-      console.error('Error in uploadVerificationImage:', error);
-      throw new Error(error.message || 'Failed to upload verification image');
-    }
-  }
-
-  // Get action categories
-  async getCategories(): Promise<Category[]> {
-    try {
-      console.log('Fetching categories...');
-
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name');
-
-      if (error) {
-        console.error('Error fetching categories:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        console.log('No categories found');
-        return [];
-      }
-
-      console.log('Categories fetched successfully:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Error in getCategories:', error);
-      throw new Error(error.message || 'Failed to fetch categories');
-    }
-  }
-
-  // Calculate impact for an action
-  async calculateImpact(actionId: string, actionType: string): Promise<void> {
-    try {
-      console.log('Calculating impact for action:', { actionId, actionType });
-
-      // This is a placeholder for impact calculation logic
-      // In a real implementation, this would calculate various metrics
-      // based on the action type and other factors
-      console.log('Impact calculation completed');
-    } catch (error: any) {
-      console.error('Error in calculateImpact:', error);
-      throw new Error(error.message || 'Failed to calculate impact');
-    }
-  }
-
-  // Get impact data aggregated by type
-  async getImpactByType(): Promise<Record<string, number>> {
-    try {
-      console.log('Fetching impact data by type');
-      
-      const { data, error } = await supabase
-        .from('action_impacts')
-        .select('impact_type, impact_score')
-        .order('impact_type');
-
-      if (error) {
-        console.error('Error fetching impact data:', error);
-        throw new Error(error.message);
-      }
-
-      // Aggregate the data
-      const aggregated = data.reduce((acc: Record<string, number>, item) => {
-        if (!acc[item.impact_type]) {
-          acc[item.impact_type] = 0;
-        }
-        acc[item.impact_type] += item.impact_score;
-        return acc;
-      }, {});
-
-      console.log('Impact data aggregated successfully');
-      return aggregated;
+      return urlData.publicUrl;
     } catch (error) {
-      console.error('Failed to get impact data:', error);
+      console.error('Error in uploadVerificationImage:', error);
       throw error;
     }
-  }
+  },
 
-  // Update an action
-  async updateAction(id: string, updates: Partial<CivicAction>): Promise<CivicAction> {
-    try {
-      console.log('Updating action:', { id, updates });
+  // Get action categories
+  getCategories: async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
 
-      const { data, error } = await supabase
-        .from('civic_actions')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating action:', error);
-        throw new Error(error.message);
-      }
-
-      if (!data) {
-        throw new Error('No data returned after updating action');
-      }
-
-      console.log('Action updated successfully:', data);
-      return data;
-    } catch (error: any) {
-      console.error('Error in updateAction:', error);
-      throw new Error(error.message || 'Failed to update action');
+    if (error) {
+      throw new Error(error.message);
     }
-  }
+    return data;
+  },
 
-  // Delete an action
-  async deleteAction(id: string): Promise<void> {
-    try {
-      console.log('Deleting action:', id);
+  // Calculate and store impact for an action
+  calculateImpact: async (actionId: string, actionType: string) => {
+    // This is a simplified impact calculation - in a real app this would be more sophisticated
+    const impactMap: Record<string, { type: string, score: number }[]> = {
+      'sublet': [{ type: 'sustainability', score: 8 }, { type: 'urban_density', score: 9 }],
+      'mutual-aid': [{ type: 'mutual_aid', score: 10 }],
+      'childcare': [{ type: 'community_building', score: 8 }, { type: 'mutual_aid', score: 7 }],
+      'food-sharing': [{ type: 'sustainability', score: 7 }, { type: 'mutual_aid', score: 8 }],
+      'vacant-use': [{ type: 'urban_density', score: 10 }, { type: 'sustainability', score: 6 }],
+      'community-event': [{ type: 'community_building', score: 9 }],
+    };
 
-      const { error } = await supabase
-        .from('civic_actions')
-        .delete()
-        .eq('id', id);
+    const impacts = impactMap[actionType] || [{ type: 'community_building', score: 5 }];
 
-      if (error) {
-        console.error('Error deleting action:', error);
-        throw new Error(error.message);
-      }
-
-      console.log('Action deleted successfully');
-    } catch (error: any) {
-      console.error('Error in deleteAction:', error);
-      throw new Error(error.message || 'Failed to delete action');
+    // Insert impacts
+    for (const impact of impacts) {
+      await supabase.from('action_impacts').insert({
+        action_id: actionId,
+        impact_type: impact.type,
+        impact_score: impact.score
+      });
     }
-  }
-}
 
-export const actionService = new ActionService();
+    // Also update the user's trust score
+    const { data: actionData } = await supabase
+      .from('civic_actions')
+      .select('user_id')
+      .eq('id', actionId)
+      .single();
+
+    if (actionData?.user_id) {
+      const totalImpact = impacts.reduce((sum, impact) => sum + impact.score, 0);
+      await supabase.rpc('increment_trust_score', { 
+        user_id: actionData.user_id, 
+        increment_amount: totalImpact / impacts.length 
+      });
+    }
+  },
+
+  // Get impact data aggregated by type
+  getImpactByType: async () => {
+    const { data, error } = await supabase
+      .from('action_impacts')
+      .select('impact_type, impact_score')
+      .order('impact_type');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Aggregate the data
+    const aggregated = data.reduce((acc: Record<string, number>, item) => {
+      if (!acc[item.impact_type]) {
+        acc[item.impact_type] = 0;
+      }
+      acc[item.impact_type] += item.impact_score;
+      return acc;
+    }, {});
+
+    return aggregated;
+  }
+};

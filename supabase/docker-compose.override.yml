@@ -1,0 +1,74 @@
+version: '3.8'
+services:
+  storage:
+    image: supabase/storage-api:latest
+    environment:
+      - POSTGREST_URL=http://kong:8000
+      - PGRST_JWT_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/postgres?sslmode=disable
+      - STORAGE_BACKEND=file
+      - FILE_STORAGE_BACKEND_PATH=/var/lib/storage
+      - STORAGE_API_HOST=0.0.0.0
+      - STORAGE_API_PORT=5000
+      - STORAGE_API_CORS_ORIGINS=*
+      - STORAGE_API_JWT_SECRET=your-super-secret-jwt-token-with-at-least-32-characters-long
+      - LOG_LEVEL=debug
+      - STORAGE_API_DEBUG=true
+      - MAX_FILE_SIZE=52428800  # 50MB in bytes
+    volumes:
+      - ./storage:/var/lib/storage
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+      - kong
+    networks:
+      - supabase_network_Substance
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+    command: ["/bin/sh", "-c", "sleep 20 && /usr/local/bin/storage-api"]
+
+  realtime:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  analytics:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  pg_meta:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  studio:
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+networks:
+  supabase_network_Substance:
+    external: true
+
+volumes:
+  supabase_storage_Substance:
+    name: supabase_storage_Substance 

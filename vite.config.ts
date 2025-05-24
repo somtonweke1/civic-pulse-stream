@@ -1,38 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
+import './crypto-polyfill.js';
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
-    host: "::",
     port: 8080,
-    hmr: {
-      protocol: 'ws'
-    },
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      'c05f1714-8a33-4b30-9af9-17b27c227cd9.lovableproject.com'
-    ],
+    host: true
   },
-  plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
+  plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-      crypto: path.resolve(__dirname, './src/polyfills/crypto.js'),
-      stream: 'stream-browserify',
-      buffer: 'buffer/',
-      worker_threads: path.resolve(__dirname, './src/polyfills/worker-threads.js')
+      "@": path.resolve(__dirname, "./src")
     }
   },
   optimizeDeps: {
-    exclude: ['worker_threads'],
     esbuildOptions: {
       define: {
         global: 'globalThis'
@@ -40,18 +23,13 @@ export default defineConfig(({ mode }) => ({
     }
   },
   build: {
+    sourcemap: true,
     rollupOptions: {
-      external: ['worker_threads'],
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          crypto: ['crypto-browserify', 'stream-browserify', 'buffer']
-        }
-      }
-    }
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
   },
-  define: {
-    'process.env': {},
-    global: 'globalThis'
-  }
-}));
+});

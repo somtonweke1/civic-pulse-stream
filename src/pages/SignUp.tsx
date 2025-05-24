@@ -4,69 +4,29 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, AlertCircle } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
+import { ArrowRight } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
 const SignUp = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const { signUp } = useAuth();
+  const { signUp, signIn } = useAuth();
   const navigate = useNavigate();
-
-  const validateForm = () => {
-    if (!email) {
-      setError('Email is required');
-      return false;
-    }
-    if (!name) {
-      setError('Name is required');
-      return false;
-    }
-    if (!password) {
-      setError('Password is required');
-      return false;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    return true;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
     
     try {
-      console.log('Validating signup form...');
-      if (!validateForm()) {
-        console.log('Form validation failed');
-        setLoading(false);
-        return;
-      }
-      
-      console.log('Attempting sign up with:', { email, name });
-      await signUp({ email, password, name });
-      console.log('Sign up successful');
-      toast.success('Account created successfully! Please check your email to confirm your signup.');
-      navigate('/sign-up-confirmation');
-    } catch (error: any) {
+      await signUp(email, password, name);
+      // Sign in the user immediately after successful sign-up
+      await signIn(email, password);
+      navigate('/dashboard');
+    } catch (error) {
       console.error('Sign up error:', error);
-      const errorMessage = error.message || 'Failed to create account. Please try again.';
-      setError(errorMessage);
-      toast.error(`Sign up failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -79,30 +39,23 @@ const SignUp = () => {
         <div className="flex-grow container max-w-md py-12">
           <Card>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+              <CardTitle className="text-2xl font-bold">Join Substance</CardTitle>
               <CardDescription>
-                Enter your information to create an account and start making an impact
+                Start tracking your civic impact in seconds. No verification needed to begin.
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
                 <div className="space-y-2">
                   <label className="text-sm font-medium" htmlFor="name">
-                    Name
+                    Your Name
                   </label>
                   <Input
                     id="name"
-                    placeholder="Your name"
+                    placeholder="What should we call you?"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -112,11 +65,10 @@ const SignUp = () => {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@example.com"
+                    placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    disabled={loading}
                   />
                 </div>
                 <div className="space-y-2">
@@ -126,40 +78,24 @@ const SignUp = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Create a secure password"
+                    placeholder="Create a password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={8}
-                    disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Password must be at least 8 characters long.
+                    At least 8 characters. We'll keep it secure.
                   </p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium" htmlFor="confirmPassword">
-                    Confirm Password
-                  </label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    disabled={loading}
-                  />
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col space-y-4">
                 <Button className="w-full" disabled={loading} type="submit">
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? 'Creating your account...' : 'Get Started'}
                   {!loading && <ArrowRight size={16} className="ml-2" />}
                 </Button>
                 <div className="text-center text-sm">
-                  Already have an account?{" "}
+                  Already part of the community?{" "}
                   <Link to="/sign-in" className="text-primary underline-offset-4 hover:underline">
                     Sign In
                   </Link>

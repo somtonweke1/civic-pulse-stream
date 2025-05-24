@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { actionService } from '@/services/actionService';
-import { CivicAction, Category } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,278 +18,292 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { actionFormSchema } from "@/lib/schemas";
-import { z } from "zod";
-
-type ActionFormValues = z.infer<typeof actionFormSchema>;
+import { ArrowRight, Upload } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { actionService } from '@/services/actionService';
 
 const ActionForm = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const [actionType, setActionType] = useState('');
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
+  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [verificationImage, setVerificationImage] = useState<File | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors },
-    reset,
-  } = useForm<ActionFormValues>({
-    resolver: zodResolver(actionFormSchema),
-    defaultValues: {
-      title: "",
-      details: "",
-      location: "",
-      action_type: "sublet",
-      category_id: undefined,
-    },
-  });
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string>('');
+  const [categories, setCategories] = useState<{id: number, name: string}[]>([]);
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  // Load categories on mount
   useEffect(() => {
-    const loadCategories = async () => {
+    // Fetch categories
+    const fetchCategories = async () => {
       try {
-        const data = await actionService.getCategories();
-        setCategories(data);
+        const cats = await actionService.getCategories();
+        setCategories(cats);
       } catch (error) {
-        console.error('Failed to load categories:', error);
-        toast.error('Failed to load categories. Please try again.');
+        console.error('Error fetching categories:', error);
       }
     };
-    loadCategories();
+    
+    fetchCategories();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setValue(name, value);
-  };
-
-  const handleSelectChange = (name: string, value: string) => {
-    setValue(name, name === 'category_id' ? (value ? parseInt(value) : undefined) : value);
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setUploadedFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast.error('You must be logged in to log an action');
+      navigate('/sign-in');
       return;
     }
     
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
+    if (!actionType) {
+      toast.error('Please select an action type');
       return;
     }
 
-    setVerificationImage(file);
-  };
-
-  const onSubmit = async (data: ActionFormValues) => {
     setLoading(true);
-    setError(null);
-
+    
     try {
-      if (!user?.id) throw new Error("You must be logged in to create an action");
-
-      // Convert category_id to number if it exists
-      const formData = {
-        ...data,
-        category_id: data.category_id ? Number(data.category_id) : null,
-      };
-
-      console.log('Creating action with data:', { ...formData, user_id: user.id });
-
-      // Create the action
-      const action = await actionService.createAction({
-        ...formData,
-        user_id: user.id,
+      console.log('Creating new action with data:', {
+        title,
+        details,
+        location,
+        action_type: actionType,
+        user_id: user.id
       });
 
-      if (!action) {
-        throw new Error('Failed to create action');
-      }
+      // Create the civic action
+      const newAction = await actionService.createAction({
+        title,
+        details,
+        location,
+        action_type: actionType,
+        user_id: user.id
+      });
 
-      console.log('Action created successfully:', action);
+      console.log('Action created successfully:', newAction);
 
-      // Upload verification image if provided
-      if (verificationImage) {
+      // If there's a verification file, upload it
+      if (uploadedFile && newAction.id) {
+        console.log('Starting image upload for file:', uploadedFile.name);
         try {
-          const imageUrl = await actionService.uploadVerificationImage(verificationImage, action.id);
-          console.log('Verification image uploaded:', imageUrl);
-          
-          // Update action with verification URL
-          await actionService.updateAction(action.id, {
-            verification_url: imageUrl,
-            verification_method: 'photo'
+          const verificationUrl = await actionService.uploadVerificationImage(
+            uploadedFile, 
+            newAction.id
+          );
+          console.log('Image uploaded successfully, URL:', verificationUrl);
+
+          // Add verification record
+          console.log('Adding verification record with URL:', verificationUrl);
+          await actionService.addVerification({
+            action_id: newAction.id,
+            method: 'photo',
+            status: 'pending',
+            evidence_url: verificationUrl,
+            user_id: user.id
           });
-        } catch (error) {
-          console.error('Error uploading verification image:', error);
-          // Don't throw here, just log the error
+          console.log('Verification record added successfully');
+        } catch (uploadError) {
+          console.error('Error during image upload or verification:', uploadError);
+          // Continue with the action creation even if verification fails
+          toast.warning('Action created but image verification failed. You can add verification later.');
         }
       }
 
       // Calculate impact
-      try {
-        await actionService.calculateImpact(action.id, action.action_type);
-      } catch (error) {
-        console.error('Error calculating impact:', error);
-        // Don't throw here, just log the error
+      if (newAction.id) {
+        console.log('Calculating impact for action:', newAction.id);
+        await actionService.calculateImpact(newAction.id, actionType);
+        console.log('Impact calculated successfully');
       }
 
-      // Show success message
-      toast.success('Your action has been created successfully.');
+      toast.success('Action logged successfully', {
+        description: 'Your civic action has been recorded and will contribute to your community impact score.',
+        position: 'bottom-right',
+      });
 
       // Reset form
-      reset();
-      setVerificationImage(null);
+      setActionType('');
+      setTitle('');
+      setDetails('');
+      setLocation('');
+      setUploadedFile(null);
+      setUploadPreview('');
 
-      // Navigate to actions page
-      navigate('/actions');
-    } catch (error: any) {
-      console.error('Error creating action:', error);
-      setError(error.message || 'Failed to create action');
-      toast.error(error.message || 'Failed to create action');
+      // Navigate to dashboard
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error submitting action:', error);
+      // Show more specific error message based on the error
+      if (error instanceof Error) {
+        toast.error(`Failed to submit action: ${error.message}`);
+      } else {
+        toast.error('Failed to submit action. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl mx-auto p-6">
-      {error && (
-        <div className="bg-destructive/15 text-destructive p-3 rounded-md text-sm">
-          {error}
-          </div>
-      )}
+  if (!user) {
+    return (
+      <Card className="w-full max-w-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl">Log Your Action</CardTitle>
+          <CardDescription>
+            Sign in to record your civic action and build community impact.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <p className="mb-6">You need to sign in to log actions and contribute to your community.</p>
+          <Button asChild>
+            <a href="/sign-in">Sign In <ArrowRight size={16} className="ml-2" /></a>
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Title *
+  return (
+    <Card className="w-full max-w-xl">
+      <CardHeader>
+        <CardTitle className="text-2xl">Log Your Action</CardTitle>
+        <CardDescription>
+          Record a civic action you've taken to help quantify community impact.
+        </CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="action-type">
+              Action Type
+            </label>
+            <Select value={actionType} onValueChange={setActionType}>
+              <SelectTrigger id="action-type">
+                <SelectValue placeholder="Select action type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sublet">Housing - Room Subletting</SelectItem>
+                <SelectItem value="mutual-aid">Mutual Aid</SelectItem>
+                <SelectItem value="childcare">Pop-up Childcare</SelectItem>
+                <SelectItem value="food-sharing">Food Sharing</SelectItem>
+                <SelectItem value="vacant-use">Vacant Space Utilization</SelectItem>
+                <SelectItem value="community-event">Community Event</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="title">
+              Title
             </label>
             <Input 
               id="title" 
-          {...register("title")}
-          onChange={handleInputChange}
+              placeholder="Brief description of your action"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               required
-          className="mt-1"
-          placeholder="What did you do?"
-          disabled={loading}
             />
-        {errors.title && <div className="text-destructive">{errors.title.message}</div>}
           </div>
 
-      <div>
-        <label htmlFor="details" className="block text-sm font-medium text-gray-700">
-          Details *
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="details">
+              Details
             </label>
             <Textarea 
               id="details" 
-          {...register("details")}
-          onChange={handleInputChange}
+              placeholder="Provide more details about what you did..."
+              className="min-h-[100px]"
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
               required
-          className="mt-1"
-          placeholder="Tell us more about your action..."
-          rows={4}
-          disabled={loading}
             />
-        {errors.details && <div className="text-destructive">{errors.details.message}</div>}
           </div>
 
-      <div>
-        <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+          <div className="space-y-2">
+            <label className="text-sm font-medium" htmlFor="location">
               Location
             </label>
             <Input 
               id="location" 
-          {...register("location")}
-          onChange={handleInputChange}
-          className="mt-1"
-          placeholder="Where did this happen?"
-          disabled={loading}
-        />
-        {errors.location && <div className="text-destructive">{errors.location.message}</div>}
+              placeholder="ZIP code or neighborhood"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              required
+            />
           </div>
 
-      <div>
-        <label htmlFor="action_type" className="block text-sm font-medium text-gray-700">
-          Action Type *
-        </label>
-        <Select
-          {...register("action_type")}
-          onValueChange={(value) => handleSelectChange('action_type', value)}
-          disabled={loading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select an action type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="sublet">Sublet</SelectItem>
-            <SelectItem value="mutual-aid">Mutual Aid</SelectItem>
-            <SelectItem value="childcare">Childcare</SelectItem>
-            <SelectItem value="food-sharing">Food Sharing</SelectItem>
-            <SelectItem value="vacant-use">Vacant Space Use</SelectItem>
-            <SelectItem value="community-event">Community Event</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.action_type && <div className="text-destructive">{errors.action_type.message}</div>}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Verification</label>
+            <div className="flex items-center justify-center border-2 border-dashed border-border rounded-md p-6 relative">
+              {uploadPreview ? (
+                <div className="space-y-2 text-center">
+                  <img src={uploadPreview} alt="Verification" className="max-h-40 mx-auto" />
+                  <p className="text-xs text-muted-foreground">
+                    {uploadedFile?.name}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setUploadedFile(null);
+                      setUploadPreview('');
+                    }}
+                  >
+                    Remove
+                  </Button>
                 </div>
-
-      <div>
-        <label htmlFor="category_id" className="block text-sm font-medium text-gray-700">
-          Category
-        </label>
-        <Select
-          {...register("category_id")}
-          onValueChange={(value) => handleSelectChange('category_id', value)}
-          disabled={loading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.id.toString()}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.category_id && <div className="text-destructive">{errors.category_id.message}</div>}
+              ) : (
+                <div className="space-y-2 text-center">
+                  <div className="mx-auto h-10 w-10 text-muted-foreground flex items-center justify-center rounded-full bg-muted">
+                    <Upload size={20} />
                   </div>
-
-      <div>
-        <label htmlFor="verification" className="block text-sm font-medium text-gray-700">
-          Verification Image
-        </label>
-        <Input
-          id="verification"
+                  <div className="text-xs text-muted-foreground">
+                    <label
+                      htmlFor="file-upload"
+                      className="relative cursor-pointer text-primary underline-offset-4 hover:underline"
+                    >
+                      <span>Upload a file</span>
+                      <input
+                        id="file-upload"
+                        name="file-upload"
                         type="file"
-          accept="image/*"
+                        className="sr-only"
                         onChange={handleFileChange}
-          className="mt-1"
-          disabled={loading}
+                        accept="image/*"
                       />
-        <p className="mt-1 text-sm text-gray-500">
-          Upload an image to verify your action (max 5MB)
-        </p>
+                    </label>{" "}
+                    to verify your action (photo, receipt, etc.)
                   </div>
-
-      <Button
-        type="submit"
-        disabled={loading}
-        className="w-full"
-      >
-        {loading ? 'Logging Action...' : 'Log Action'}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button className="w-full" size="lg" disabled={loading} type="submit">
+            {loading ? 'Submitting...' : 'Log Action'} {!loading && <ArrowRight size={16} className="ml-2" />}
           </Button>
+        </CardFooter>
       </form>
+    </Card>
   );
 };
 
